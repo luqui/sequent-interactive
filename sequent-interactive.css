@@ -1,0 +1,10 @@
+.sequent-editor {
+    border: 1px solid blue;
+    border-radius: 4px;
+}
+
+.CodeMirror-scroll {
+    /* Make a dynamically expanding CM */
+    height: auto;
+    overflow: visible;
+}
