@@ -1,0 +1,2 @@
+SequentInteractiveModule = function($) {
+};

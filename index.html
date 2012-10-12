@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.css" />
+  <link rel="stylesheet" type="text/css" href="codemirror/lib/codemirror.css" />
+  
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script src="bootstrap/js/bootstrap.min.js"></script>
+  <script src="codemirror/lib/codemirror.js"></script>
+  <script src="codemirror/mode/javascript/javascript.js"></script>
+  <script src="sequent-interactive.js"></script>
+  <script>
+  $(function() {
+   var SequentInteractive = SequentInteractiveModule($);
+   $(".sequent-repl").append(SequentInteractive.repl());
+  })
+  </script>
+ </head>
+ <body>
+  <div class="container">
+   <div class="navbar">
+    <div class="navbar-inner">
+     <a class="brand" href="#">Sequent-Interactive</a>
+    </div>
+   </div>
+   <div class="sequent-repl">
+   </div>
+  </div>
+ </body>
+</html>
