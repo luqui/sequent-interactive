@@ -3,8 +3,13 @@
     border-radius: 4px;
 }
 
+.sequent-code-input {
+    font-family: monospace;
+}
+
 .CodeMirror-scroll {
     /* Make a dynamically expanding CM */
     height: auto;
     overflow: visible;
 }
+
