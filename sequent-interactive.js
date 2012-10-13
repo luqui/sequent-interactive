@@ -28,7 +28,7 @@ var expanderButton = function(smallText, bigText, cls) {
 };
 
 var outputBox = function() {
-    var box = elt('div', { class: 'sequent-output' })
+    var box = elt('div', { class: 'sequent-output' }, elt('pre', {}, text(' ')))
     var name = elt('input', { class: 'span2 sequent-code-input', type: 'text', placeholder: 'Name...' });
     var info = elt('div');
     return {
@@ -45,6 +45,9 @@ var outputBox = function() {
         error: function(errorText) {
             info.empty();
             info.append(expanderButton('Error', errorText, 'btn-danger'));
+        },
+        empty: function() {
+            info.empty();
         }
     };
 };
@@ -73,7 +76,7 @@ var safeTry = function(fn) {
 
 var $$ = {};
 
-$$.repl = function() {
+$$.replRow = function() {
     var io = elt('div', { class: 'sequent-io' });
     var editor = elt('div', { class: 'sequent-editor' } );
     var outbox = outputBox();
@@ -82,21 +85,43 @@ $$.repl = function() {
     }, {
         onKeyEvent: function() {
             var code = mirror.getValue();
-            var result = tryEval(code);
-            if ('value' in result) {
-                outbox.update(result.value);
+            if (code.match(/^\s*$/)) {
+                outbox.empty();
             }
             else {
-                outbox.error(result.error);
+                var result = tryEval(code);
+                if ('value' in result) {
+                    outbox.update(result.value);
+                }
+                else {
+                    outbox.error(result.error);
+                }
             }
-            return;
         }
     });
 
-    io.append(elt('div', { class: 'row' }, elt('div', { class: 'span12' }, editor)));
+    setTimeout(function() { mirror.focus() }, 20); // XXX hax, of course.  Because I can't focus something till it's rooted.
+
+    var xbutton = elt('button', { class: 'btn' }, elt('i', { class: 'icon-remove' }));
+    xbutton.click(function() {
+        io.remove();
+    });
+
+    io.append(elt('div', { class: 'row' }, elt('div', { class: 'span11' }, editor), elt('div', { class: 'span1' }, xbutton)));
     io.append(outbox.ui);
 
     return io;
+};
+
+$$.repl = function() {
+    var btn = elt('button', { class: 'btn btn-block' }, elt('i', { class: 'icon-chevron-down' }));
+    var bcontainer = elt('div', { class: 'row' }, elt('div', { class: 'span12' }, btn));
+    var ccontainer = elt('div');
+    var container = elt('div', {}, ccontainer, bcontainer);
+    btn.click(function() {
+        ccontainer.append($$.replRow());
+    });
+    return container;
 };
 
 return $$;
