@@ -27,6 +27,30 @@ var expanderButton = function(smallText, bigText, cls) {
         ));
 };
 
+var tryEval = function(code) {
+    var evalled = safeTry(function() { return eval('(function() { return (' + code + ') })') });
+
+    // O Haskell, how I miss thee  (return safeTry =<< evalled)
+    if ('value' in evalled) {
+        return safeTry(evalled.value);
+    }
+    else {
+        return { error: evalled.error }
+    }
+};
+
+var safeTry = function(fn) {
+    try { 
+        var r = fn();
+        return { value: r }
+    }
+    catch (e) {
+        return { error: e }
+    }
+}
+
+var $$ = {};
+
 var outputBox = function() {
     var box = elt('div', { class: 'sequent-output' }, elt('pre', {}, text(' ')))
     var name = elt('input', { class: 'span2 sequent-code-input', type: 'text', placeholder: 'Name...' });
@@ -52,31 +76,7 @@ var outputBox = function() {
     };
 };
 
-var tryEval = function(code) {
-    var evalled = safeTry(function() { return eval('(function() { return (' + code + ') })') });
-
-    // O Haskell, how I miss thee  (return safeTry =<< evalled)
-    if ('value' in evalled) {
-        return safeTry(evalled.value);
-    }
-    else {
-        return { error: evalled.error }
-    }
-};
-
-var safeTry = function(fn) {
-    try { 
-        var r = fn();
-        return { value: r }
-    }
-    catch (e) {
-        return { error: e }
-    }
-}
-
-var $$ = {};
-
-$$.replRow = function() {
+var replRow = function() {
     var io = elt('div', { class: 'sequent-io' });
     var editor = elt('div', { class: 'sequent-editor' } );
     var outbox = outputBox();
@@ -119,7 +119,7 @@ $$.repl = function() {
     var ccontainer = elt('div');
     var container = elt('div', {}, ccontainer, bcontainer);
     btn.click(function() {
-        ccontainer.append($$.replRow());
+        ccontainer.append(replRow());
     });
     return container;
 };
