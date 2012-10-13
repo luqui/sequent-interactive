@@ -64,15 +64,22 @@ var snippetEditorBag = function(snippet) {
             var code = mirror.getValue();
             if (code.match(/^\s*$/)) {
                 outbag.empty();
+                return;
+            }
+            
+            var idmatch = /^\s*(\w+)\s*=/.exec(code);
+            if (idmatch) {
+                code = code.substr(idmatch[0].length);
+                mirror.setValue(code);
+                name.val(idmatch[1]);
+            }
+
+            var result = tryEval(code);
+            if ('value' in result) {
+                outbag.update(result.value);
             }
             else {
-                var result = tryEval(code);
-                if ('value' in result) {
-                    outbag.update(result.value);
-                }
-                else {
-                    outbag.error(result.error);
-                }
+                outbag.error(result.error);
             }
         }
     });
@@ -103,7 +110,6 @@ var outputBag = function() {
         },
         update: function(content) {
             status.empty();
-            status.append(expanderButton('OK', '', 'btn-success'));
             output.empty();
             output.append(elt('pre', {}, text(content)));
         },
@@ -126,8 +132,8 @@ var assembleSnippetRow = function(ui, removeButton) {
                 elt('div', { class: 'span9' }, ui.editor),
                 elt('div', { class: 'span1' }, removeButton)),
             elt('div', { class: 'row' },
-                elt('div', { class: 'span9 offset2' }, ui.output),
-                elt('div', { class: 'span1' }, ui.status))));
+                elt('div', { class: 'span1 offset1' }, ui.status),
+                elt('div', { class: 'span10' }, ui.output))));
 };
 
 var snippetList = function(list) {
@@ -185,9 +191,7 @@ var blankSnippet = function() {
     }
 };
 
-
 var $$ = {};
-
 
 $$.repl = function() {
     return snippetList([]).ui;
