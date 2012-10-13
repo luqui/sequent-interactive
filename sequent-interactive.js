@@ -49,79 +49,148 @@ var safeTry = function(fn) {
     }
 }
 
-var $$ = {};
+// Snippet = { name : String, code : String }
+// SnippetList = List Snippet
 
-var outputBox = function() {
-    var box = elt('div', { class: 'sequent-output' }, elt('pre', {}, text(' ')))
-    var name = elt('input', { class: 'span2 sequent-code-input', type: 'text', placeholder: 'Name...' });
-    var info = elt('div');
-    return {
-        ui: elt('div', { class: 'row' },
-                elt('div', { class: 'span2' }, name), 
-                elt('div', { class: 'span9' }, box),
-                elt('div', { class: 'span1' }, info)),
-        update: function(content) {
-            info.empty();
-            info.append(expanderButton('OK', '', 'btn-success'));
-            box.empty();
-            box.append(elt('pre', {}, text(content)));
-        },
-        error: function(errorText) {
-            info.empty();
-            info.append(expanderButton('Error', errorText, 'btn-danger'));
-        },
-        empty: function() {
-            info.empty();
-        }
-    };
-};
-
-var replRow = function() {
-    var io = elt('div', { class: 'sequent-io' });
-    var editor = elt('div', { class: 'sequent-editor' } );
-    var outbox = outputBox();
-    var mirror = CodeMirror(function(cmelt) {
-        editor.append(cmelt);
+var snippetEditorBag = function(snippet) {
+    var editor = elt('div', { class: 'sequent-editor' });
+    var outbag = outputBag();
+    var name = elt('input', { class: 'sequent-code-input', type: 'text', placeholder: 'Name...', value: snippet.name });
+    var mirror = CodeMirror(function(cm_elt) {
+        editor.append(cm_elt);
     }, {
+        value: snippet.code,
         onKeyEvent: function() {
             var code = mirror.getValue();
             if (code.match(/^\s*$/)) {
-                outbox.empty();
+                outbag.empty();
             }
             else {
                 var result = tryEval(code);
                 if ('value' in result) {
-                    outbox.update(result.value);
+                    outbag.update(result.value);
                 }
                 else {
-                    outbox.error(result.error);
+                    outbag.error(result.error);
                 }
             }
         }
     });
 
-    setTimeout(function() { mirror.focus() }, 20); // XXX hax, of course.  Because I can't focus something till it's rooted.
-
-    var xbutton = elt('button', { class: 'btn' }, elt('i', { class: 'icon-remove' }));
-    xbutton.click(function() {
-        io.remove();
-    });
-
-    io.append(elt('div', { class: 'row' }, elt('div', { class: 'span11' }, editor), elt('div', { class: 'span1' }, xbutton)));
-    io.append(outbox.ui);
-
-    return io;
+    return {
+        ui: {
+            editor: editor,
+            name: name,
+            status: outbag.ui.status,
+            output: outbag.ui.output,
+        },
+        value: function() {
+            return { 
+                name: name.val(), 
+                code: mirror.getValue() 
+            }
+        }
+    }
 };
 
-$$.repl = function() {
-    var btn = elt('button', { class: 'btn btn-block' }, elt('i', { class: 'icon-chevron-down' }));
-    var bcontainer = elt('div', { class: 'row' }, elt('div', { class: 'span12' }, btn));
-    var ccontainer = elt('div');
-    var container = elt('div', {}, ccontainer, bcontainer);
-    btn.click(function() {
-        ccontainer.append(replRow());
+var outputBag = function() {
+    var output = elt('div', { class: 'sequent-output' }, elt('pre', {}, text(' ')));
+    var status = elt('div');
+    return {
+        ui: {
+            output: output,
+            status: status
+        },
+        update: function(content) {
+            status.empty();
+            status.append(expanderButton('OK', '', 'btn-success'));
+            output.empty();
+            output.append(elt('pre', {}, text(content)));
+        },
+        error: function(errorText) {
+            status.empty();
+            status.append(expanderButton('Error', errorText, 'btn-danger'));
+        },
+        empty: function() {
+            status.empty();
+        }
+    };
+};
+
+
+var assembleSnippetRow = function(ui, removeButton) {
+    return (
+        elt('div', {},
+            elt('div', { class: 'row' }, 
+                elt('div', { class: 'span2' }, ui.name.addClass('span2')),
+                elt('div', { class: 'span9' }, ui.editor),
+                elt('div', { class: 'span1' }, removeButton)),
+            elt('div', { class: 'row' },
+                elt('div', { class: 'span9 offset2' }, ui.output),
+                elt('div', { class: 'span1' }, ui.status))));
+};
+
+var snippetList = function(list) {
+    var editors_container = elt('div');
+    var add_button = elt('button', { class: 'btn btn-block' }, elt('i', { class: 'icon-chevron-down' }));
+    var add_button_container = elt('div', { class: 'row' }, elt('div', { class: 'span12' }, add_button));
+    var container = elt('div', {}, editors_container, add_button_container);
+
+    var id_count = 0;
+    var snippets = {};
+
+    var add_snippet = function(snip) {
+        var id = id_count++;
+        
+        var remove_button = elt('button', { class: 'btn' }, elt('i', { class: 'icon-remove' }));
+        var snip_ui = snippetEditorBag(snip);
+        var snip_row = assembleSnippetRow(snip_ui.ui, remove_button);
+        snippets[id] = {
+            value: snip_ui.value,
+            row: snip_row
+        };
+
+        remove_button.click(function() {
+            snippets[id].row.remove();
+            delete snippets[id];
+        });
+
+        editors_container.append(snip_row)
+    };
+
+    add_button.click(function() {
+        add_snippet(blankSnippet);
     });
-    return container;
+
+    for (var i = 0; i < list.length; i++) {
+        add_snippet(list[i]);
+    }
+
+    return {
+        value: function() {
+            var r = [];
+            for (var i in snippets) {
+                r.push(snippets[i].value());
+            }
+            return r;
+        },
+        ui: container
+    }
+};
+
+var blankSnippet = function() {
+    return {
+        name: '',
+        code: ''
+    }
+};
+
+
+var $$ = {};
+
+
+$$.repl = function() {
+    return snippetList([]).ui;
 };
 
 return $$;
