@@ -69,3 +69,144 @@ playing a similar role to types.
 With sequent's abstraction abilities, UI's and types may be almost the same
 thing.  It just matters what definitions you give to apply and constants, etc.
 Wow, a real use for overloading those things.
+
+------
+
+So how do we make a development enviroment trivial to implement?  What
+foundation allows this?
+
+Right now we have basically a table that looks like:
+
+    name1 | editor1
+    name2 | editor2
+
+Where `editorn` is some fancy code editor.  But that is not all there is to it,
+since the editors are not self-contained.  Information is flowing into them from
+the outside, and out of them into others, when we display the result value.
+IOW, this table forms the environment, and the environment flows back in.  It's
+a lot like a letrec:
+
+    let name1 = value1
+        name2 = value2
+
+But it seems like it is on a different level.  In this code the names are
+statically known, and I think that is important for RT and analysis and stuff.
+In TV language it is more like:
+
+    Dict Name Value -> Dict Name Value
+
+put through a fixed point.  We could be asking the user for an arbitrary mapping
+here, but that is too general.  It is a specific kind of mapping that doesn't
+look at the keys coming in, and assumes that certain ones will be there. 
+
+I'm wondering what the basic unit is -- what is the type of a single value's
+editor?  Well, let's remember, an editor is not a value by itself, we cannot
+view an editor.   We can view only functions.  I suppose we are viewing the
+evaluator function:
+
+    Dict Name Code * Code -> Value
+
+whose natural UI looks like:
+
+    | _name_ | _code_ |
+    | _name_ | _code_ |  | _code_ |    |->    | output |
+    | _name_ | _code_ |
+            [+]
+
+This is the most abstract form of Sequent!  But the easier to use variant is the
+UI for the letrec function:
+
+    Dict Name Code -> Dict Name Value
+
+whose natural UI looks like:
+
+    | _name_ | _code_ |       | name | value |
+    | _name_ | _code_ |  |->  | name | value |
+    | _name_ | _code_ |       | name | value |
+            [+]
+
+which is usable, but ugly.   We want it to look like:
+
+    | _name_ | _code_ |-> value |
+    | _name_ | _code_ |-> value |
+    | _name_ | _code_ |-> value |
+                [+]
+
+So now we have perhaps *the* fundamenal question of a TV language -- how do you
+change the look of a UI?
+
+Let's take a moment to remember that code is not essential, that is merely a
+concise way of combining values.  I have here a collection of values and I am
+tagging them with names as a way to refer to them so I can combine them with
+textual code.  This is not essential, and logically what is happening feels more
+like Elliott's Eros. 
+
+Anyway, not to start whipping out language features, but we would like to
+really reflect the logical structure of the UI in the code.  So the programmer
+is thinking of his programming task as *editing* a `Dict Name Code` and
+receiving feedback meanwhile.
+
+What does editing mean?  When using an editor, you are manipulating the input to
+some function.  That is, when editing an `A`, you are viewing an `A -> B` for
+some `B`.  In this task, editing is primary and there is a great deal of
+feedback to help you edit.  At the end of the day we see the editor as some pure
+function `Dict Name Code -> B` for some `B` (presumably `Dict Name Value`),
+there is more going on inside -- we have composed this function in a way such
+that the UI provides feedback.
+
+How do we think of the editor?  A simplified view, one that is convenient to the
+programmer however slightly inaccurate, is that on each row we are viewing an
+`eval` function.  The lie is that the function is not pure, that it is
+incorporating the values from the other rows in making its computation.  But we
+can use this simplified idea to guide us, perhaps.  In text language, the value
+we are viewing (modulo renaming / adding rows) is:
+
+    { name1: eval, name2: eval, name3: eval }
+
+But this does not incorporate the feedback.  Perhaps we can add feedback with a
+special input combinator:
+
+    feedback :: (a -> Widget) -> Src a -> Src a
+
+(Digression: what exactly is the UI for a `Src`?  Since a `Src` is about input,
+to view it probably means to try it out and see what it gives you.  I.e. viewing
+a `Src a` is like viewing the identity function on `a` using the given `Src` and
+the default `Sink` for `a`.  All this talk of defaults is making me
+uncomfortable.)
+
+Meta-UI code can be kind of ugly, it seems -- a lot of things with questionable
+viewability.   Can we do `feedback` without mentioning `Src`, and using the
+tangibility of values instead?  It may look like:
+
+    feedback :: (a -> Widget) -> (a -> b) -> (a -> b)
+
+And I suppose a `Widget` is just some UI with no computational information; i.e.
+`()`, so:
+
+    feedback :: (a -> ()) -> (a -> b) -> (a -> b)
+
+A bit strange, it feels like there needs to be more information in the type.
+But maybe I'm still just getting used to this whole tangible programming thing
+-- in a world with ubiquituous UI, why mention it?
+
+Now we may be getting somewhere.  Our editor sans environment is:
+
+    assuming
+        eval :: Dict Name Value -> Code -> Value
+        letrec :: Dict Name Code -> Dict Name Value
+        output :: a -> ()
+
+    editor :: Dict Name Code -> Dict Name Value
+    editor = feedback (output . eval) letrec
+
+Which comes for free with a useless table of names and values on the right.  Oh
+well, easy to throw away, once I come up with the appropriate combinator.
+
+(Digression: we don't have to worry about functionality-only library designers
+who did not put any work into making their UI pretty or usable: we can always
+completely replace the UI of a value with some easy combinators.  A hard thing
+might be to dig inside a UI and replace a little bit of it -- again, this may be
+where the abstraction capabilities of Sequent as a whole come in, but the
+dynamic nature of UI tracking may make that difficult)
+
+
