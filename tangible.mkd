@@ -197,7 +197,7 @@ Now we may be getting somewhere.  Our editor sans environment is:
         output :: a -> ()
 
     editor :: Dict Name Code -> Dict Name Value
-    editor = feedback (output . eval) letrec
+    editor = feedback (output . eval {}) letrec
 
 Which comes for free with a useless table of names and values on the right.  Oh
 well, easy to throw away, once I come up with the appropriate combinator.
@@ -209,4 +209,147 @@ might be to dig inside a UI and replace a little bit of it -- again, this may be
 where the abstraction capabilities of Sequent as a whole come in, but the
 dynamic nature of UI tracking may make that difficult)
 
+Now to get the environment in there. 
 
+    editor = let env = feedback (output . eval env) letrec in env
+
+Easy peasy. Good ol' laziness.  As an experiment, what happens if we take out
+the fixpoint.  In other words, what does viewing
+
+    \env -> feedback (output . eval env) letrec
+
+look like?  It is of type:
+
+    Dict Name Value -> Dict Name Code -> Dict Name Value
+
+A `Dict Name Value` is the same thing, as far as input is concerned, as a `Dict
+Name Code`, since we input arbitrary values as code.  So we have:
+
+    | _name_ | _value_ |   | _name_ | _code_ -> value |      | name | value |
+    | _name_ | _value_ |   | _name_ | _code_ -> value |  ->  | name | value |
+    | _name_ | _value_ |   | _name_ | _code_ -> value |      | name | value |
+            [+]                        [+]
+
+And then fix just ties the output to the input, leaving you with the nice editor
+in between.  We have a one-liner IDE (obviously a bad and ugly one), which is
+pretty spiffy.
+
+------
+
+For code input, it would be nice to have some sort of global environment or
+something like that floating around so you don't have to redefine the world to
+use an advanced function.  How to make it clean?  In particular, what if
+somebody wants something similar but not for code, what is the design pattern
+for a global toolbox, of sorts.
+
+Clearly global is not what it is, since globals are evil, and Sequent's mission
+is to eliminate globals in all their forms.  We replace them with abstract
+parameters -- and it is in that way pretty easy to have some globally available
+library whenever you edit code.  Just replace the code `Src` with a better one.
+But what about side-effects.  I want my users to be able to *add* to the library
+from wherever they are in the application.  Just wrote some code, it's useful,
+throw it up there.  It does not seem like this should be fundamentally harder
+than read-only.
+
+I mean... modulo the issues.  I guess that is what pure functionalism is telling
+us: the issues.  What happens when you add one snippet from one place and
+another snippet from another place?  To us, it is clear that they are merged
+into the same database, but there are other possibilities that the computer
+can't know better; e.g. forking each one into its own world (like the text of
+the editor, we certainly don't want to share that). 
+
+We could be like ML and add a concept of mutability.  But we don't have to be as
+liberal -- what about just enough mutability to handle this sort of case?
+UI-mutability, or some such.  Anyway it should probably have a similar form to
+the above editor, we want to keep this functional.  So we have an editor of
+type:
+
+    Dict Name Code -> Dict Name Value
+
+built out of a fixed point of type:
+
+    Dict Name Value -> (Dict Name Code -> Dict Name Value)
+
+And we want to open the fixed point so that it is accessible from more than one
+place.   That is, in each place where we are expecting a code input, we view
+this editor, but changes to the environment affect all other environments.  This
+is no longer just viewing something, and that may be very important the way
+purity is important in FP.  However, to be able to modify something else when
+this part of the program is simply asking for a `Code` seems hard to pull off.
+Let's try to transform it directly:
+
+    evalAdd :: Code -> Code -> Value
+    evalAdd x y = eval x + eval y
+
+Now our spiffy editor with the fixed point has type:
+
+    Env a = Dict Name a
+
+    Env Code -> Env Value
+
+Let's modify it so it also has a "preferred" output -- i.e. the expression you
+are defining plus a supporting environment (aka. `let ... in`).
+
+    fancy :: Env Code * Code -> Env Value * Value
+
+However, we don't need it to compile, that output is just there because of the
+way we constructed it for feedback.  We can create a code editor of type:
+
+    fancy' :: Env Value -> (Code -> a) -> (Code -> a)
+
+and use that:
+
+    fancy' env . result (fancy' env) $ evalAdd
+
+But we want to be able to edit the environment as well.  So we are looking for
+an `evalAdd` of type:
+
+    evalAdd' :: Env Code -> Code -> Code -> (Env Code, Value)
+
+Right?  Which we will then put through a fixed point.  This has a kind of monady
+pollution feel to it.  I guess what I want to know -- what I hope -- is that we
+can take `evalAdd` as given and transform it to `evalAdd'` through external
+operations alone.
+
+Starting clean, we should have:
+
+    evalAdd :: Code -> Code -> Value
+    fancy :: Env Code * Code -> Env Code * Code   -- just an editor, identity fn
+    merge :: Env Code -> Env Code -> Env Code
+
+And we want:
+
+    fancyEvalAdd :: Env Code -> Code -> Code -> (Env Code, Value)
+
+So:
+
+    fancyEvalAdd env code1 code2 = (merge env' env'', evalAdd code1' code2'')
+        where
+        (env', code1')   = fancy (env,code1)
+        (env'', code2'') = fancy (env,code2)
+
+Which should do the trick.
+
+At this point, the lack of purity is becoming bothersome, at least to my Haskell
+eyes.  How are the two fancys arranged / how do we have the information to
+arrange them? Does:
+
+    foo = bar
+        where
+        baz = output someUI
+
+actually have more UI than `foo = bar`, despite unused `baz`?  That seems bad
+for uniform abstraction.  Perhaps that is the cost of every value having a UI,
+or perhaps there is some applicative functor-like technology to leverage here.
+
+Remember this is a whole language built around TVs.  Don't be afraid to veer
+from Haskell's values.  For example, it is now important when you have two
+inputs to a function to specify (in some form) how they are to be arranged (if
+only to give them some CSS-class-like-things).  Perhaps we are even being forced
+into visual programming!
+
+    | x |--------
+    +---+  x+y
+    | y |--------
+
+(Looks like spreadsheets ;-)
