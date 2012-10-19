@@ -10,9 +10,12 @@
   <script src="codemirror/lib/codemirror.js"></script>
   <script src="codemirror/mode/javascript/javascript.js"></script>
   <script src="sequent-interactive.js"></script>
+  <script src="tangible.js"></script>
+  <script src="http://cdn.openkeyval.org/statics/openkeyval.packed.js"></script>
   <script>
   $(function() {
-   var SequentInteractive = SequentInteractiveModule($, CodeMirror);
+   var Tangible = TangibleModule($);
+   var SequentInteractive = SequentInteractiveModule($, CodeMirror, Tangible);
    $(".sequent-repl").append(SequentInteractive.repl());
   })
   </script>

@@ -1,4 +1,4 @@
-SequentInteractiveModule = function($, CodeMirror) {
+SequentInteractiveModule = function($, CodeMirror, T) {
 
 var elt = function(type, attrs) {
     var ret = $(document.createElement(type));
@@ -39,6 +39,7 @@ var roleSelector = function() {
     var roles = [
         { name: 'export', color: 'primary' },
         { name: 'helper', color: 'info' },
+        { name: 'param', color: 'inverse' },
         { name: 'test',   color: 'warning' }
     ];
 
@@ -277,6 +278,8 @@ var blankSnippet = function() {
         code: ''
     }
 };
+
+
 
 var $$ = {};
 
