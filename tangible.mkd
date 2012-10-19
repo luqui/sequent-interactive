@@ -1,0 +1,71 @@
+Tangible Programming
+====================
+
+*Inspired by Conal Elliott's work on Tangible Functional Programming.*
+
+So I'm after making a really nice development environment in browser.  This is
+the next-generation REPL.  In older repls, you interacted with your program
+through text -- text code, text input, text output.  The current state of
+Sequent is text code, GUI input, text output.  I am not willing to go to GUI
+code yet, not completely at least, but GUI output seems like the right choice.
+
+With this idea we are going to depart from Javascript, since every value will be
+tangible, and Javascript does not support easy manipulation of such values.
+This will be a UI language -- not a language specifically for making UI's, but a
+language in which UI is fundamental.  Following after Elliott, all values will
+be *tangible* (to the extent that it is possible) -- values will have packed
+with them a mechanism for interaction.
+
+We can see this from a puristic theoretical viewpoint as the following: sure
+that function outputs a number, but numbers are inobservable Platonic ideals.
+Are we to see it as an arabic representation, a vector of factors, a symbolic
+expression, ... ?  For a function to return a simple number is all well and
+good, but we need a way to see it if we are to... see it.
+
+The same goes for input.  Are we to receive an integer, a fraction, a year, a
+length, ?  All these have different ways of coming in, and for something to come
+into a function we specify in what form.
+
+But functions can be composed and applied -- giving the output of one to the
+input of another.  This is where the power is.  All UI's can be composed, for
+every UI is also a value (within reason -- there are things like titles of
+pages, etc.  I don't know what to do about those yet.).
+
+The revolution here is that there are no values with any meaningful
+computational content that do not also have ways of inputting/outputting.  There
+is a correspondence between values and interfaces.
+
+I am wondering how static these concepts are.  If you have a function like:
+
+    f x
+        | x < 0     = g x
+        | otherwise = h x
+
+And `g x` and `h x` happen to pick different ways of displaying their output,
+does `f` display its output in two different ways?  Is that the proper
+separation of concerns?  Or is it more like something at the type level.  I'm
+inclined to try it dynamic so everything is at the value level.
+
+What is the meaning of `0` -- what UI does that come with?  Maybe a default one,
+maybe a lexically decided one, maybe a dynamically decided one. If we are
+sufficiently flexible, we may have different concepts of "a UI" which handle
+these different cases.  One kind of UI could be a `Widget` and another could be
+a `LookAndFeel -> Widget`.  And combining those two sorts may be impossible.
+Let's punt on that, perhaps leaving it to my other ideas about transportation
+between bases.
+
+And then there are some pure UIs, whose value and UI are identical (or perhaps
+the UI of a UI is some kind of debugging description?).  You have to have these
+if you want to use a different UI for a value programmatically, eg.
+
+    16 `withUI` factorsView
+
+`factorsView`, being a value in the language, must have a UI of its own.  I
+would expect it to be a standard UI of type `Int -> Widget`... hmm, but what is
+the `UI` of the resulting `Widget`.  I think it should be itself.  That smells a
+little bit, I'm expecting something more like the type tower, since UI's are
+playing a similar role to types.
+
+With sequent's abstraction abilities, UI's and types may be almost the same
+thing.  It just matters what definitions you give to apply and constants, etc.
+Wow, a real use for overloading those things.
