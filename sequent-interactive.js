@@ -1,5 +1,7 @@
 SequentInteractiveModule = function($, CodeMirror) {
 
+var TESTS = {};
+
 var elt = function(type, attrs) {
     var ret = $(document.createElement(type));
     if (attrs) {
@@ -27,8 +29,14 @@ var expanderButton = function(smallText, bigText, cls) {
         ));
 };
 
-var tryEval = function(code) {
-    var evalled = safeTry(function() { return eval('(function() { return (' + code + ') })') });
+var tryEval = function(code, env) {
+    env = env || {};
+    
+    var evalled = safeTry(function() {
+        with (env) {
+            return eval('(function() { return (' + code + ') })') 
+        }
+    });
 
     // O Haskell, how I miss thee  (return safeTry =<< evalled)
     if ('value' in evalled) {
@@ -47,12 +55,25 @@ var safeTry = function(fn) {
     catch (e) {
         return { error: e }
     }
-}
+};
+
+var evalRec = function(bindings) {
+    return safeTry(function() {
+        var evalled = {};
+        for (var _i = 0; _i < bindings.length; _i++) {
+            with (evalled) {
+                evalled[bindings[_i].name] = eval("(function() { return (" + bindings[_i].value + ") })")();
+            }
+        }
+        return evalled;
+    });
+};
 
 // Snippet = { name : String, code : String }
 // SnippetList = List Snippet
 
-var snippetEditorBag = function(snippet) {
+// evalEnv :: String -> Error Value
+var snippetEditorBag = function(snippet, evalEnv) {
     var editor = elt('div', { class: 'sequent-editor' });
     var outbag = outputBag();
     var name = elt('input', { class: 'sequent-code-input', type: 'text', placeholder: 'Name...', value: snippet.name });
@@ -74,7 +95,7 @@ var snippetEditorBag = function(snippet) {
                 name.val(idmatch[1]);
             }
 
-            var result = tryEval(code);
+            var result = evalEnv(code);
             if ('value' in result) {
                 outbag.update(result.value);
             }
@@ -92,9 +113,10 @@ var snippetEditorBag = function(snippet) {
             output: outbag.ui.output,
         },
         value: function() {
+            var code = mirror.getValue();
             return { 
                 name: name.val(), 
-                code: mirror.getValue() 
+                code: code
             }
         }
     }
@@ -145,11 +167,24 @@ var snippetList = function(list) {
     var id_count = 0;
     var snippets = {};
 
+    var evalEnv = function(src) {
+        var srcs = [];
+        for (var i in snippets) {
+            var v = snippets[i].value();
+            srcs.push({ name: v.name, value: v.code });
+        }
+        var env = evalRec(srcs);
+        if (env.error) {
+            return env;
+        }
+        return tryEval(src, env.value);
+    };
+
     var add_snippet = function(snip) {
         var id = id_count++;
         
         var remove_button = elt('button', { class: 'btn' }, elt('i', { class: 'icon-remove' }));
-        var snip_ui = snippetEditorBag(snip);
+        var snip_ui = snippetEditorBag(snip, evalEnv);
         var snip_row = assembleSnippetRow(snip_ui.ui, remove_button);
         snippets[id] = {
             value: snip_ui.value,
