@@ -29,6 +29,56 @@ var expanderButton = function(smallText, bigText, cls) {
         ));
 };
 
+var listToDict = function(nameKey, valueKey, list) {
+    var dict = {};
+    for (var i = 0; i < list.length; i++) {
+        dict[list[i][nameKey]] = list[i][valueKey];
+    }
+    return dict;
+};
+
+var roleSelector = function() {
+    var roles = [
+        { name: 'export', color: 'primary' },
+        { name: 'helper', color: 'info' },
+        { name: 'test',   color: 'warning' }
+    ];
+
+    var colors = listToDict('name', 'color', roles);
+
+    var container = elt('div');
+    var active = 'helper';
+
+    var makeDropdown = function(selected) {
+        active = selected;
+        var group = elt('div', { class: 'btn-group' });
+        group.append(elt('div', { class: 'btn dropdown-toggle btn-' + colors[selected], 'data-toggle': 'dropdown', href: '#' }, text(selected)));
+        
+        var ul = elt('ul', { class: 'dropdown-menu', role: 'menu' });
+        for (var i = 0; i < roles.length; i++) {
+            (function() {
+                var btn = elt('a', { href: '#' }, text(roles[i].name));
+                var item = roles[i].name;
+                btn.click(function() {
+                    makeDropdown(item);
+                });
+                ul.append(elt('li', { }, btn));
+            })();
+        }
+
+        group.append(ul);
+        container.empty();
+        container.append(group);
+    };
+    makeDropdown('helper');
+    return {
+        ui: container,
+        value: function() {
+            return active;
+        }
+    };
+};
+
 var tryEval = function(code, env) {
     env = env || {};
     
@@ -77,6 +127,7 @@ var snippetEditorBag = function(snippet, evalEnv) {
     var editor = elt('div', { class: 'sequent-editor' });
     var outbag = outputBag();
     var name = elt('input', { class: 'sequent-code-input', type: 'text', placeholder: 'Name...', value: snippet.name });
+    var role = roleSelector();
     var mirror = CodeMirror(function(cm_elt) {
         editor.append(cm_elt);
     }, {
@@ -111,12 +162,14 @@ var snippetEditorBag = function(snippet, evalEnv) {
             name: name,
             status: outbag.ui.status,
             output: outbag.ui.output,
+            role: role.ui
         },
         value: function() {
             var code = mirror.getValue();
             return { 
                 name: name.val(), 
-                code: code
+                code: code,
+                role: role.value()
             }
         }
     }
@@ -151,7 +204,8 @@ var assembleSnippetRow = function(ui, removeButton) {
         elt('div', {},
             elt('div', { class: 'row' }, 
                 elt('div', { class: 'span2' }, ui.name.addClass('span2')),
-                elt('div', { class: 'span9' }, ui.editor),
+                elt('div', { class: 'span8' }, ui.editor),
+                elt('div', { class: 'span1' }, ui.role),
                 elt('div', { class: 'span1' }, removeButton)),
             elt('div', { class: 'row' },
                 elt('div', { class: 'span1 offset1' }, ui.status),
