@@ -1,7 +1,5 @@
 SequentInteractiveModule = function($, CodeMirror) {
 
-var TESTS = {};
-
 var elt = function(type, attrs) {
     var ret = $(document.createElement(type));
     if (attrs) {
