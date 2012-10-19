@@ -353,3 +353,7 @@ into visual programming!
     | y |--------
 
 (Looks like spreadsheets ;-)
+
+This does not excite me though.  It seems like a lot of work to make something
+that I don't want very much.   Perhaps it is time to step out of TV territory,
+because doing it right may come at this price.
