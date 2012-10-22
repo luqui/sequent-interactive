@@ -1,4 +1,4 @@
-SequentInteractiveModule = function($, CodeMirror) {
+SequentInteractiveModule = function($, CodeMirror, UI) {
 
 var elt = function(type, attrs) {
     var ret = $(document.createElement(type));
@@ -17,24 +17,6 @@ var text = function(text) {
     return $(document.createTextNode(text));
 };
 
-var expanderButton = function(smallText, bigText, cls) {
-    cls = cls || '';
-    return elt('div', { class: 'btn-group' },
-        elt('div', { class: 'btn dropdown-toggle ' + cls, 'data-toggle': 'dropdown', href: '#' },
-            text(smallText)),
-        elt('ul', { class: 'dropdown-menu' }, 
-            elt('li', {}, text(bigText))
-        ));
-};
-
-var listToDict = function(nameKey, valueKey, list) {
-    var dict = {};
-    for (var i = 0; i < list.length; i++) {
-        dict[list[i][nameKey]] = list[i][valueKey];
-    }
-    return dict;
-};
-
 var roleSelector = function() {
     var roles = [
         { name: 'export', color: 'primary' },
@@ -43,38 +25,17 @@ var roleSelector = function() {
         { name: 'test',   color: 'warning' }
     ];
 
-    var colors = listToDict('name', 'color', roles);
-
-    var container = elt('div');
     var active = 'helper';
-
-    var makeDropdown = function(selected) {
-        active = selected;
-        var group = elt('div', { class: 'btn-group' });
-        group.append(elt('div', { class: 'btn dropdown-toggle btn-' + colors[selected], 'data-toggle': 'dropdown', href: '#' }, text(selected)));
-        
-        var ul = elt('ul', { class: 'dropdown-menu', role: 'menu' });
-        for (var i = 0; i < roles.length; i++) {
-            (function() {
-                var btn = elt('a', { href: '#' }, text(roles[i].name));
-                var item = roles[i].name;
-                btn.click(function() {
-                    makeDropdown(item);
-                });
-                ul.append(elt('li', { }, btn));
-            })();
+    var dropDown = UI.dropDown(roles, {
+        initial: active,
+        change: function(selected) {
+            active = selected;
         }
+    });
 
-        group.append(ul);
-        container.empty();
-        container.append(group);
-    };
-    makeDropdown('helper');
     return {
-        ui: container,
-        value: function() {
-            return active;
-        }
+        ui: dropDown,
+        value: function() { return active }
     };
 };
 
@@ -123,12 +84,17 @@ var evalRec = function(bindings) {
 
 // evalEnv :: String -> Error Value
 var snippetEditorBag = function(snippet, evalEnv) {
-    var editor = elt('div', { class: 'sequent-editor' });
+    var editor = UI.container();
     var outbag = outputBag();
-    var name = elt('input', { class: 'sequent-code-input', type: 'text', placeholder: 'Name...', value: snippet.name });
+    var name = UI.input({
+        placeholder: 'Name...',
+        value: snippet.name,
+        width: 2  // Should be handled by UI
+    });
+
     var role = roleSelector();
     var mirror = CodeMirror(function(cm_elt) {
-        editor.append(cm_elt);
+        editor.append(UI.wrapJQuery(cm_elt));
     }, {
         value: snippet.code,
         onKeyEvent: function() {
@@ -170,52 +136,58 @@ var snippetEditorBag = function(snippet, evalEnv) {
                 code: code,
                 role: role.value()
             }
+        },
+        focus: function() {
+            mirror.focus();
+            mirror.refresh();
         }
     }
 };
 
 var outputBag = function() {
-    var output = elt('div', { class: 'sequent-output' }, elt('pre', {}, text(' ')));
-    var status = elt('div');
+    var code = UI.codeDisplay(' ');
+    var output = UI.container(code);
+    var status = UI.container();
     return {
         ui: {
             output: output,
             status: status
         },
         update: function(content) {
-            status.empty();
-            output.empty();
-            output.append(elt('pre', {}, text(content)));
+            status.contents(UI.empty());
+            code.contents(content);
         },
         error: function(errorText) {
-            status.empty();
-            status.append(expanderButton('Error', errorText, 'btn-danger'));
+            status.contents(UI.expanderButton('Error', errorText, 'danger'));
         },
         empty: function() {
-            status.empty();
+            status.contents(UI.empty());
         }
     };
 };
 
 
 var assembleSnippetRow = function(ui, removeButton) {
-    return (
-        elt('div', {},
-            elt('div', { class: 'row' }, 
-                elt('div', { class: 'span2' }, ui.name.addClass('span2')),
-                elt('div', { class: 'span8' }, ui.editor),
-                elt('div', { class: 'span1' }, ui.role),
-                elt('div', { class: 'span1' }, removeButton)),
-            elt('div', { class: 'row' },
-                elt('div', { class: 'span1 offset1' }, ui.status),
-                elt('div', { class: 'span10' }, ui.output))));
+    return UI.container(
+        UI.row(
+            UI.span(2, ui.name),
+            UI.span(8, ui.editor),
+            UI.span(1, ui.role),
+            UI.span(1, removeButton)),
+        UI.row(
+            UI.span(1, UI.empty()),
+            UI.span(1, ui.status),
+            UI.span(10, ui.output)));
 };
 
 var snippetList = function(list) {
-    var editors_container = elt('div');
-    var add_button = elt('button', { class: 'btn btn-block' }, elt('i', { class: 'icon-chevron-down' }));
-    var add_button_container = elt('div', { class: 'row' }, elt('div', { class: 'span12' }, add_button));
-    var container = elt('div', {}, editors_container, add_button_container);
+    var editors_container = UI.container();
+    var add_button = UI.button(UI.icon('plus'), {
+        block: true,
+        click: function() { add_snippet(blankSnippet) }
+    });
+    var add_button_container = UI.row(UI.span(12, add_button));
+    var container = UI.container(editors_container, add_button_container);
 
     var id_count = 0;
     var snippets = {};
@@ -236,7 +208,12 @@ var snippetList = function(list) {
     var add_snippet = function(snip) {
         var id = id_count++;
         
-        var remove_button = elt('button', { class: 'btn' }, elt('i', { class: 'icon-remove' }));
+        var remove_button = UI.button(UI.icon('remove'), {
+            click: function() {
+                snippets[id].row.remove();
+                delete snippets[id];
+            }
+        });
         var snip_ui = snippetEditorBag(snip, evalEnv);
         var snip_row = assembleSnippetRow(snip_ui.ui, remove_button);
         snippets[id] = {
@@ -244,17 +221,9 @@ var snippetList = function(list) {
             row: snip_row
         };
 
-        remove_button.click(function() {
-            snippets[id].row.remove();
-            delete snippets[id];
-        });
-
-        editors_container.append(snip_row)
+        editors_container.append(snip_row);
+        snip_ui.focus();
     };
-
-    add_button.click(function() {
-        add_snippet(blankSnippet);
-    });
 
     for (var i = 0; i < list.length; i++) {
         add_snippet(list[i]);

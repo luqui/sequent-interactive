@@ -9,12 +9,14 @@
   <script src="bootstrap/js/bootstrap.min.js"></script>
   <script src="codemirror/lib/codemirror.js"></script>
   <script src="codemirror/mode/javascript/javascript.js"></script>
-  <script src="sequent-interactive.js"></script>
   <script src="http://cdn.openkeyval.org/statics/openkeyval.packed.js"></script>
+  <script src="sequent-interactive.js"></script>
+  <script src="bootstrap.js"></script>
   <script>
   $(function() {
-   var SequentInteractive = SequentInteractiveModule($, CodeMirror);
-   $(".sequent-repl").append(SequentInteractive.repl());
+   var Bootstrap = BootstrapModule($);
+   var SequentInteractive = SequentInteractiveModule($, CodeMirror, Bootstrap);
+   $(".sequent-repl").append(Bootstrap.getJQuery(SequentInteractive.repl()));
   })
   </script>
  </head>
