@@ -1,4 +1,4 @@
-SequentInteractiveModule = function($, CodeMirror, T) {
+SequentInteractiveModule = function($, CodeMirror) {
 
 var elt = function(type, attrs) {
     var ret = $(document.createElement(type));
