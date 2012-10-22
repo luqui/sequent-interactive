@@ -17,7 +17,7 @@ var text = function(text) {
     return $(document.createTextNode(text));
 };
 
-var roleSelector = function() {
+var roleSelector = function(active) {
     var roles = [
         { name: 'export', color: 'primary' },
         { name: 'helper', color: 'info' },
@@ -25,7 +25,6 @@ var roleSelector = function() {
         { name: 'test',   color: 'warning' }
     ];
 
-    var active = 'helper';
     var dropDown = UI.dropDown(roles, {
         initial: active,
         change: function(selected) {
@@ -89,10 +88,10 @@ var snippetEditorBag = function(snippet, evalEnv) {
     var name = UI.input({
         placeholder: 'Name...',
         value: snippet.name,
-        width: 2  // Should be handled by UI
+        width: 2  // TODO Should be handled by UI
     });
 
-    var role = roleSelector();
+    var role = roleSelector(snippet.role);
     var mirror = CodeMirror(function(cm_elt) {
         editor.append(UI.wrapJQuery(cm_elt));
     }, {
@@ -244,7 +243,8 @@ var snippetList = function(list) {
 var blankSnippet = function() {
     return {
         name: '',
-        code: ''
+        code: '',
+        role: 'helper'
     }
 };
 
