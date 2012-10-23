@@ -8,7 +8,6 @@ var roleSelector = function(active) {
         { name: 'test',   color: 'warning' }
     ];
 
-
     var dropDown = UI.dropDown(roles, {
         initial: active,
         change: function(selected) {
@@ -62,13 +61,13 @@ var evalRec = function(bindings) {
     });
 };
 
-// Snippet = { name : String, code : String }
+// Code = { type : 'code', code : String }
+
+// Snippet = { name : String, code : Code, role : Role }
 // SnippetList = List Snippet
 
 // evalEnv :: String -> Error Value
 var snippetEditorBag = function(snippet, evalEnv) {
-    var editor = UI.container();
-    var outbag = outputBag();
     var name = UI.input({
         placeholder: 'Name...',
         value: snippet.name,
@@ -76,10 +75,36 @@ var snippetEditorBag = function(snippet, evalEnv) {
     });
 
     var role = roleSelector(snippet.role);
+    var editor = codeEditorBag(snippet.code, evalEnv);
+
+    return {
+        ui: {
+            editor: editor.ui.editor,
+            name: name,
+            status: editor.ui.status,
+            output: editor.ui.output,
+            role: role.ui
+        },
+        value: function() {
+            return { 
+                name: name.val(), 
+                code: editor.value(),
+                role: role.value()
+            }
+        },
+        focus: function() {
+            editor.focus();
+        }
+    }
+};
+
+var codeEditorBag = function(code, evalEnv) {
+    var editor = UI.container();
+    var outbag = outputBag();
     var mirror = CodeMirror(function(cm_elt) {
         editor.append(UI.wrapJQuery(cm_elt));
     }, {
-        value: snippet.code,
+        value: code.code,
         onKeyEvent: function() {
             var code = mirror.getValue();
             if (code.match(/^\s*$/)) {
@@ -87,12 +112,14 @@ var snippetEditorBag = function(snippet, evalEnv) {
                 return;
             }
             
+            /*
             var idmatch = /^\s*(\w+)\s*=/.exec(code);
             if (idmatch) {
                 code = code.substr(idmatch[0].length);
                 mirror.setValue(code);
                 name.val(idmatch[1]);
             }
+            */
 
             var result = evalEnv(code);
             if ('value' in result) {
@@ -107,16 +134,13 @@ var snippetEditorBag = function(snippet, evalEnv) {
     return {
         ui: {
             editor: editor,
-            name: name,
             status: outbag.ui.status,
-            output: outbag.ui.output,
-            role: role.ui
+            output: outbag.ui.output
         },
         value: function() {
-            return { 
-                name: name.val(), 
-                code: mirror.getValue(),
-                role: role.value()
+            return {
+                type: 'code',
+                code: mirror.getValue()
             }
         },
         focus: function() {
@@ -178,7 +202,7 @@ var snippetList = function(list) {
         var srcs = [];
         for (var i in snippets) {
             var v = snippets[i].value();
-            srcs.push({ name: v.name, value: v.code });
+            srcs.push({ name: v.name, value: v.code.code });
         }
         var env = evalRec(srcs);
         if (env.error) {
@@ -227,7 +251,7 @@ var blankSnippet = function() {
     return {
         role: 'helper',
         name: '',
-        code: ''
+        code: { type: 'code', code: '' }
     }
 };
 
@@ -239,7 +263,7 @@ var scopeEditor = function(initlist) {
         var exports = "";
         for (var i in snips) {
             if (snips[i].name) {
-                code += "  var " + snips[i].name + " = " + snips[i].code + ";\n";
+                code += "  var " + snips[i].name + " = " + snips[i].code.code + ";\n";
                 if (snips[i].role === 'export') {
                     exports += snips[i].name + ": " + snips[i].name + ", ";
                 }
@@ -248,7 +272,7 @@ var scopeEditor = function(initlist) {
         var module = {
             role: 'helper',
             name: '',
-            code: "function() {\n" + code + "\n  return { " + exports + " };\n}"
+            code: { type: 'code', code: "function() {\n" + code + "\n  return { " + exports + " };\n}" }
         };
         container.contents(scopeEditor([module]).ui);
     };
