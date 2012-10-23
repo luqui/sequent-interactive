@@ -25,6 +25,7 @@ var roleSelector = function(active) {
         { name: 'test',   color: 'warning' }
     ];
 
+
     var dropDown = UI.dropDown(roles, {
         initial: active,
         change: function(selected) {
@@ -47,7 +48,7 @@ var tryEval = function(code, env) {
         }
     });
 
-    // O Haskell, how I miss thee  (return safeTry =<< evalled)
+    // O Haskell, how I miss thee  (safeTry =<< evalled)
     if ('value' in evalled) {
         return safeTry(evalled.value);
     }
@@ -129,10 +130,9 @@ var snippetEditorBag = function(snippet, evalEnv) {
             role: role.ui
         },
         value: function() {
-            var code = mirror.getValue();
             return { 
                 name: name.val(), 
-                code: code,
+                code: mirror.getValue(),
                 role: role.value()
             }
         },
@@ -183,7 +183,7 @@ var snippetList = function(list) {
     var editors_container = UI.container();
     var add_button = UI.button(UI.icon('plus'), {
         block: true,
-        click: function() { add_snippet(blankSnippet) }
+        click: function() { add_snippet(blankSnippet()) }
     });
     var add_button_container = UI.row(UI.span(12, add_button));
     var container = UI.container(editors_container, add_button_container);
