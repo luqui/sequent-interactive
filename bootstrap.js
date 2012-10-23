@@ -138,6 +138,14 @@ $$.row = function() {
     return wrap(row);
 };
 
+$$.fluidRow = function() {
+    var row = elt('div', { class: 'row-fluid' });
+    for (var i = 0; i < arguments.length; i++) {
+        row.append(unwrap(arguments[i]));
+    }
+    return wrap(row);
+};
+
 $$.span = function(width, contents) {
     return wrap(elt('div', { class: 'span' + width }, unwrap(contents)));
 };

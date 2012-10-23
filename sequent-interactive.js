@@ -75,14 +75,12 @@ var snippetEditorBag = function(snippet, evalEnv) {
     });
 
     var role = roleSelector(snippet.role);
-    var editor = codeEditorBag(snippet.code, evalEnv);
+    var editor = editorBag(snippet.code, evalEnv);
 
     return {
         ui: {
-            editor: editor.ui.editor,
+            editor: editor.ui,
             name: name,
-            status: editor.ui.status,
-            output: editor.ui.output,
             role: role.ui
         },
         value: function() {
@@ -95,6 +93,15 @@ var snippetEditorBag = function(snippet, evalEnv) {
         focus: function() {
             editor.focus();
         }
+    }
+};
+
+var editorBag = function(code, evalEnv) {
+    if (code.type == 'code') {
+        return codeEditorBag(code, evalEnv);
+    }
+    else if (code.type == 'module') {
+        return moduleEditorBag(code, evalEnv);
     }
 };
 
@@ -133,6 +140,7 @@ var codeEditorBag = function(code, evalEnv) {
 
     return {
         ui: {
+            type: 'code',
             editor: editor,
             status: outbag.ui.status,
             output: outbag.ui.output
@@ -172,18 +180,101 @@ var outputBag = function() {
     };
 };
 
+var moduleEditorBag = function(module) {
+    var container = UI.container();
+    var buttonContainer = UI.container();
+
+    var current = { value: function() { return module } };
+
+    var collapsed = function() {
+        current = collapsedModuleEditor(current.value());
+        container.contents(current.ui);
+        buttonContainer.contents(UI.button(UI.text("Open"), {
+            click: function() { expanded() }
+        }));
+    };
+
+    var expanded = function() {
+        current = openModuleEditor(current.value());
+        container.contents(current.ui);
+        buttonContainer.contents(UI.button(UI.text("Close"), {
+            click: function() { collapsed() }
+        }));
+    };
+
+    collapsed(module);
+    
+    return {
+        ui: {
+            type: 'module',
+            editor: container,
+            toggle: buttonContainer
+        },
+        value: function() {
+            return current.value();
+        },
+        focus: function() { }
+    }
+};
+
+var openModuleEditor = function(module) {
+    var list = snippetList(module.snippets);
+    return {
+        ui: list.ui,
+        value: function() {
+            return { type: 'module', snippets: list.value() }
+        }
+    }
+};
+
+var collapsedModuleEditor = function(module) {
+    var exports = [];
+    var snippets = module.snippets;
+    for (var i = 0; i < snippets.length; i++) {
+        if (snippets[i].role == 'export' && snippets[i].name) {
+            exports.push(snippets[i].name);
+        }
+    }
+
+    return {
+        ui: UI.text("module(" + exports.join(", ") + ")"),
+        value: function() { return module }
+    }
+};
+
+var assembleRow = function(ui, removeButton) {
+    if (ui.editor.type == 'code') {
+        return assembleSnippetRow(ui, removeButton);
+    }
+    else if (ui.editor.type == 'module') {
+        return assembleModuleRow(ui, removeButton);
+    }
+}
 
 var assembleSnippetRow = function(ui, removeButton) {
     return UI.container(
         UI.row(
             UI.span(2, ui.name),
-            UI.span(8, ui.editor),
+            UI.span(8, ui.editor.editor),
             UI.span(1, ui.role),
             UI.span(1, removeButton)),
         UI.row(
             UI.span(1, UI.empty()),
-            UI.span(1, ui.status),
-            UI.span(10, ui.output)));
+            UI.span(1, ui.editor.status),
+            UI.span(10, ui.editor.output)));
+};
+
+var assembleModuleRow = function(ui, removeButton) {
+    return UI.container(
+        UI.row(
+            UI.span(2, ui.name),
+            UI.span(7, UI.empty()),
+            UI.span(1, ui.editor.toggle),
+            UI.span(1, ui.role),
+            UI.span(1, removeButton)),
+        UI.fluidRow(
+            UI.span(2, UI.empty()),
+            UI.span(10, ui.editor.editor)));
 };
 
 var snippetList = function(list) {
@@ -221,7 +312,7 @@ var snippetList = function(list) {
             }
         });
         var snip_ui = snippetEditorBag(snip, evalEnv);
-        var snip_row = assembleSnippetRow(snip_ui.ui, remove_button);
+        var snip_row = assembleRow(snip_ui.ui, remove_button);
         snippets[id] = {
             value: snip_ui.value,
             row: snip_row
@@ -255,52 +346,21 @@ var blankSnippet = function() {
     }
 };
 
-var scopeEditor = function(initlist) {
-    initlist = initlist || [];
-    var collapseAction = function() {
-        var snips = list.value();
-        var code = "";
-        var exports = "";
-        for (var i in snips) {
-            if (snips[i].name) {
-                code += "  var " + snips[i].name + " = " + snips[i].code.code + ";\n";
-                if (snips[i].role === 'export') {
-                    exports += snips[i].name + ": " + snips[i].name + ", ";
-                }
-            }
-        }
-        var module = {
-            role: 'helper',
-            name: '',
-            code: { type: 'code', code: "function() {\n" + code + "\n  return { " + exports + " };\n}" }
-        };
-        container.contents(scopeEditor([module]).ui);
-    };
 
-    var topbar = 
-        UI.row(
-            UI.span(3, 
-                UI.button(UI.text('Collapse'), {
-                    color: 'info',
-                    click: collapseAction
-                })),
-            UI.span(9, UI.empty()));
-    var list = snippetList(initlist);
-
-    var container = UI.container(topbar, list.ui);
-    var superContainer = UI.container(container);
-
-    return {
-        ui: container,
-        value: function() { return undefined }
-    }
-};
+var exampleProject = [
+    { role: 'helper', name: 'foo', code: { type: 'code', code: '12345' } },
+    { role: 'helper', name: 'bar', code: { type: 'module', snippets: [
+        { role: 'helper', name: 'foo', code: { type: 'code', code: '12340' } },
+        { role: 'export', name: 'bar', code: { type: 'code', code: 'foo + 5' } } ] } },
+    { role: 'export', name: 'test', code: { type: 'code', code: 'foo == bar.bar' } }
+];
+    
 
 
 var $$ = {};
 
 $$.repl = function() {
-    return scopeEditor().ui;
+    return snippetList(exampleProject).ui;
 };
 
 return $$;
