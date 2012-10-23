@@ -1,22 +1,5 @@
 SequentInteractiveModule = function($, CodeMirror, UI) {
 
-var elt = function(type, attrs) {
-    var ret = $(document.createElement(type));
-    if (attrs) {
-        for (var i in attrs) {
-            ret.attr(i, attrs[i]);
-        }
-    }
-    for (var i = 2; i < arguments.length; i++) {
-        ret.append(arguments[i]);
-    }
-    return ret;
-};
-
-var text = function(text) {
-    return $(document.createTextNode(text));
-};
-
 var roleSelector = function(active) {
     var roles = [
         { name: 'export', color: 'primary' },
@@ -242,18 +225,58 @@ var snippetList = function(list) {
 
 var blankSnippet = function() {
     return {
+        role: 'helper',
         name: '',
-        code: '',
-        role: 'helper'
+        code: ''
     }
 };
 
+var scopeEditor = function(initlist) {
+    initlist = initlist || [];
+    var collapseAction = function() {
+        var snips = list.value();
+        var code = "";
+        var exports = "";
+        for (var i in snips) {
+            if (snips[i].name) {
+                code += "  var " + snips[i].name + " = " + snips[i].code + ";\n";
+                if (snips[i].role === 'export') {
+                    exports += snips[i].name + ": " + snips[i].name + ", ";
+                }
+            }
+        }
+        var module = {
+            role: 'helper',
+            name: '',
+            code: "function() {\n" + code + "\n  return { " + exports + " };\n}"
+        };
+        container.contents(scopeEditor([module]).ui);
+    };
+
+    var topbar = 
+        UI.row(
+            UI.span(3, 
+                UI.button(UI.text('Collapse'), {
+                    color: 'info',
+                    click: collapseAction
+                })),
+            UI.span(9, UI.empty()));
+    var list = snippetList(initlist);
+
+    var container = UI.container(topbar, list.ui);
+    var superContainer = UI.container(container);
+
+    return {
+        ui: container,
+        value: function() { return undefined }
+    }
+};
 
 
 var $$ = {};
 
 $$.repl = function() {
-    return snippetList([]).ui;
+    return scopeEditor().ui;
 };
 
 return $$;
